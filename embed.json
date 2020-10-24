@@ -1,0 +1,23 @@
+{
+  "content": "beep beep",
+  "embed": {
+    "description": "This is going to include more information about commands soon.",
+    "color": 9425531,
+    "author": {
+      "name": "Help & Commands",
+      "icon_url": "https://cdn.discordapp.com/embed/avatars/0.png"
+    },
+    "thumbnail": {
+      "url": "https://cdn.discordapp.com/embed/avatars/0.png"
+    },
+    "footer": {
+      "text": "Book Bot"
+    },
+    "fields": [
+      {
+        "name": "`b!help`",
+        "value": "Prints this help field"
+      }
+    ]
+  }
+}
