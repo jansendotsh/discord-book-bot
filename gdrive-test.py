@@ -49,7 +49,5 @@ def main():
         print("New book has been started...\n")
         currentBook()
 
-    currentBook()
-
 if __name__ == '__main__':
     main()
