@@ -3,7 +3,7 @@ import discord
 
 discordToken = os.getenv('DISCORD_TOKEN')
 
-client = discord.client()
+client = discord.Client()
 
 # Insert events here
 
