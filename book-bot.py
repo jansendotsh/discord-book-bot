@@ -1,4 +1,4 @@
-import os, discord, json
+import os, discord
 from discord.ext import commands
 
 discordToken = os.getenv('DISCORD_TOKEN')
