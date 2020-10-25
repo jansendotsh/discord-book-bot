@@ -3,3 +3,4 @@ lib64/*
 lib/*
 bin/*
 pyvenv.cfg
+key.json
