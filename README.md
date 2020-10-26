@@ -10,14 +10,21 @@ This is a bot that is intended to function as a tool for a book club channel in 
 - Py3 Modules:
 	- virtualenv (recommended)
 	- discord.py
-	- (Google Sheets module)
+	- gspread
 
 ## Usage
 
+In Python directly:
 ```
 source ./bin/activate
 pip install -r requirements
 python book-bot.py
+```
+
+In Docker:
+```
+docker build -t book-bot:0.1
+docker run -v $(pwd)/key.json:/usr/src/app/key.json -e DISCORD_TOKEN='<DISCORD-BOT-TOKEN>' --rm book-bot:0.1
 ```
 
 ## Goals
