@@ -90,13 +90,13 @@ async def past(ctx, length: int):
         for i in range(0,length,1):
             embed.add_field(
                 name = "{} by {}".format(pastBook[i]['Title'],pastBook[i]['Author']),
-                value = "Goodreads Link: {}\neBook Link: {}\nAudiobook Link: {}".format(pastBook[0]['Goodreads Link'],pastBook[0]['eBook Link'],pastBook[0]['Audiobook Link'])
+                value = "_Goodreads Link:_ {}\n_eBook Link:_ {}\n_Audiobook Link:_ {}".format(pastBook[0]['Goodreads Link'],pastBook[0]['eBook Link'],pastBook[0]['Audiobook Link'])
             )
     else:
         for i in range(0,len(pastBook),1):
             embed.add_field(
                 name = "{} by {}".format(pastBook[i]['Title'],pastBook[i]['Author']),
-                value = "Goodreads Link: {}\neBook Link: {}\nAudiobook Link: {}".format(pastBook[0]['Goodreads Link'],pastBook[0]['eBook Link'],pastBook[0]['Audiobook Link'])
+                value = "_Goodreads Link:_ {}\n_eBook Link:_ {}\n_Audiobook Link:_ {}".format(pastBook[0]['Goodreads Link'],pastBook[0]['eBook Link'],pastBook[0]['Audiobook Link'])
             )
     embed.set_author(
         name="Past Books",

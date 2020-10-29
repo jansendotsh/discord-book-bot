@@ -1,0 +1,23 @@
+---
+- name: Deploying Book Bot code
+  hosts: all
+  user: root
+
+  tasks:
+  - name: Pull Book Bot repo updates
+    become: yes
+    become_user: root
+    git:
+      repo: "https://github.com/jansendotsh/discord-book-bot.git"
+      dest: "/data/book-bot"
+      version: master
+      update: yes
+
+  - name: Restart Docker container
+    become: yes
+    become_user: root
+    systemd:
+      name: bookbot
+      state: restarted
+      enabled: yes
+      daemon_reload: yes
