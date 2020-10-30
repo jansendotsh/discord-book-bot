@@ -76,17 +76,18 @@ async def help(ctx):
         _Example:_ `b!add "Cujo" "Stephen King"`
 
         `b!data`
-        Show the data source and information about gaining edit access
+        Prints details about data source and how to request edit access
 
         `b!swap`
-        This will start the next book. Can be run by designated admins. To request admin access, check `b!access`
+        This will start the next book, can only be run by designated admins
+        To request access, check `b!access`
 
         `b!access`
-        To request admin access to the data source (Google Sheets) and the Book Bot commands
-        Requires a Google email address for edit permissions
-        _Example:_ `b!add garrett@shakethedisea.se`
+        Requests viewing and edit access to the Google Sheet and admin access to bot, requires a Google email address
+        _Example:_ `b!add garrett@shakethedisea.se` 
         '''
     )
+
     await ctx.message.channel.send(content=None, embed=embed)
 
 @help.error

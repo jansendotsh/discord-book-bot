@@ -13,11 +13,36 @@
       version: master
       update: yes
 
-  - name: Restart Docker container
+  - name: Stop Book Bot daemon
     become: yes
     become_user: root
     systemd:
       name: bookbot
-      state: restarted
-      enabled: yes
-      daemon_reload: yes
+      state: stopped
+
+  - name: Delete Docker image
+    become: yes
+    become_user: root
+    docker_image:
+      name: book-bot
+      tag: "0.1"
+      state: absent
+
+  - name: Building Docker image
+    become: yes
+    become_user: root
+    docker_image:
+      name: book-bot
+      tag: "0.1"
+      build:
+        path: /data/book-bot
+        pull: yes
+      source: build
+      state: present
+
+  - name: Start Book Bot daemon
+    become: yes
+    become_user: root
+    systemd:
+      name: bookbot
+      state: started
