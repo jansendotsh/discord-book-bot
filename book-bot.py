@@ -282,14 +282,14 @@ async def progress(ctx):
     progSheet = sheet.get_worksheet(2).get_all_records()
     curBook = sheet.get_worksheet(1).get_all_records()
     progBar = 0
-    progLeft = 20
+    progLeft = 10
 
     progGroup = ""
 
     for i in range(0,len(progSheet),1):
         percentage = int(progSheet[i]['Progress'][:-1])
-        progBar = int(percentage/5)
-        progLeft = 20-progBar
+        progBar = int(percentage/10)
+        progLeft = 10-progBar
         progGroup += "*{}:*\n{}{} {}\n\n".format(progSheet[i]['Username'],progBar*"█",progLeft*"░", progSheet[i]['Progress'])
 
     embed = discord.Embed(
