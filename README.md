@@ -27,6 +27,11 @@ docker build -t book-bot:0.1
 docker run -v $(pwd)/key.json:/usr/src/app/key.json -e DISCORD_TOKEN='<DISCORD-BOT-TOKEN>' --rm book-bot:0.1
 ```
 
+Deploying Docker image via Ansible:
+```
+ansible-playbook deploy.yml -K -i <host-address>, -e ansible_python_interpreter=/usr/bin/python3 --ssh-common-args "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+```
+
 ## Goals
 
 - Add book commands
