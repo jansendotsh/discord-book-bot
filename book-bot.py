@@ -75,12 +75,12 @@ async def help(ctx):
         If longer than a single word, wrap in quotes to keep clean
         _Example:_ `b!add "Cujo" "Stephen King"`
 
-        `b!data`
-        Prints details about data source and how to request edit access
+        `b!update`
+        Updates your progress so we can track when we're all done with the book, requires either page count or percentage as argument
+        _Example:_ `b!update 42%`
 
-        `b!swap`
-        This will start the next book, can only be run by designated admins
-        To request access, check `b!access`
+        `b!progress`
+        Shows the progress shared by readers of the current book
 
         `b!access`
         Requests viewing and edit access to the Google Sheet and admin access to bot, requires a Google email address
@@ -205,8 +205,11 @@ async def addErr(ctx, error):
 async def swap(ctx):
     nextUp = sheet.get_worksheet(0).row_values(2)
     sheet.get_worksheet(1).insert_row(nextUp,2)
-    sheet.get_worksheet(0).delete_row(2)
+    sheet.get_worksheet(0).delete_rows(2)
     curBook = sheet.get_worksheet(1).get_all_records()
+    progSheet = sheet.get_worksheet(2)
+    progSheet.delete_rows(2,len(progSheet.get_all_records())+1)
+
     embed = discord.Embed(
         description = "@everyone It's time to start the next book!\n\nWe're now reading **{}** by **{}**. Links for this book are available here:\n\n_Goodreads Link:_ \n{}\n_BookShop:_ \n{}\n_eBook Link:_ \n{}\n_Audiobook Link:_ \n{}".format(curBook[0]['Title'],curBook[0]['Author'],curBook[0]['Goodreads Link'],curBook[0]['BookShop Link'],curBook[0]['eBook Link'],curBook[0]['Audiobook Link']),
         color = 9425531
@@ -230,13 +233,36 @@ async def swapErr(ctx, error):
 
 @client.command()
 @chanCheck()
-async def data(ctx):
+async def update(ctx, progress: str):
+    progSheet = sheet.get_worksheet(2)
+    curBook = sheet.get_worksheet(1).get_all_records()
+    pageCount = int(curBook[0]['Pages'])
+
+    try:
+        curEntry = progSheet.find(ctx.message.author.name)
+        progCell = curEntry.col + 1
+
+        if progress[-1] == "%":
+            progSheet.update_cell(curEntry.row, progCell, progress)
+        else:
+            progress = int(progress)
+            progress = str(int((progress/pageCount)*100))
+            progSheet.update_cell(curEntry.row, progCell, progress+"%")
+
+    except gspread.exceptions.CellNotFound:
+        if progress[-1] == "%":
+            progSheet.append_row([ctx.message.author.name, progress])
+        else:
+            progress = int(progress)
+            progress = str(int((progress/pageCount)*100))
+            progSheet.append_row([ctx.message.author.name, progress+"%"])
+
     embed = discord.Embed(
-        description = "All data for this bot is driven from a Google Sheets instance. This can be accessed via the following link:\n\nhttps://jnsn.link/bookclub\n\nTo request view or edit access, submit a request via the access command (full details available via `b!help`).",
+        description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded. Everyone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
         color = 9425531
     )
     embed.set_author(
-        name="Access Request",
+        name="Progress Update",
         icon_url="https://s.jnsn.link/book/book.png"
     )
     embed.set_thumbnail(
@@ -245,31 +271,47 @@ async def data(ctx):
 
     await ctx.message.channel.send(content=None, embed=embed)
 
-@data.error
-async def dataErr(ctx, error):
+@update.error
+async def updateErr(ctx, error):
     if isinstance(error, wrongChannel):
         await ctx.send(error)
 
 @client.command()
 @chanCheck()
-async def access(ctx, email: str):
-    sheet.get_worksheet(2).append_row([email, ctx.message.author.name])
+async def progress(ctx):
+    progSheet = sheet.get_worksheet(2).get_all_records()
+    curBook = sheet.get_worksheet(1).get_all_records()
+    progBar = 0
+    progLeft = 20
+
+    progGroup = ""
+
+    for i in range(0,len(progSheet),1):
+        percentage = int(progSheet[i]['Progress'][:-1])
+        progBar = int(percentage/5)
+        progLeft = 20-progBar
+        progGroup += "*{}:*\n{}{} {}\n\n".format(progSheet[i]['Username'],progBar*"█",progLeft*"░", progSheet[i]['Progress'])
+
     embed = discord.Embed(
-        description = "Your request for admin and data access will be fulfilled as soon as possible. Just hang in there, {}!".format(ctx.message.author.name),
+        description = "Hey there :wave: Here is the progress for those reading **{}** by **{}**.".format(curBook[0]['Title'],curBook[0]['Author']),
         color = 9425531
     )
     embed.set_author(
-        name="Access Request",
+        name="Book Progress",
         icon_url="https://s.jnsn.link/book/book.png"
     )
     embed.set_thumbnail(
         url="https://s.jnsn.link/book/bookmark.png"
     )
+    embed.add_field(
+        name="**Current readers:**",
+        value=progGroup
+    )
 
     await ctx.message.channel.send(content=None, embed=embed)
 
-@access.error
-async def accessErr(ctx, error):
+@progress.error
+async def progErr(ctx, error):
     if isinstance(error, wrongChannel):
         await ctx.send(error)
 
