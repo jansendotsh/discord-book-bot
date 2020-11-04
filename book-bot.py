@@ -57,34 +57,27 @@ async def help(ctx):
     embed.add_field(
         name="**Commands:**",
         value='''
-        `b!help`
-        Prints this help field
-        
-        `b!current`
-        See the current book along with information and related links
-        
-        `b!next`
-        Displays the next book along with information for calling a vote if not accurate
-        
-        `b!past`
-        Shows the past books read, requires a number of books to show
-        _Example:_ `b!past 3`
+        • `b!current`
+            See the current book along with information and related links
 
-        `b!add`
-        Add a book to the upcoming list for consideration, requires a title and author
-        If longer than a single word, wrap in quotes to keep clean
-        _Example:_ `b!add "Cujo" "Stephen King"`
+        • `b!next`
+            Displays the next book along with information for calling a vote if not accurate
 
-        `b!update`
-        Updates your progress so we can track when we're all done with the book, requires either page count or percentage as argument
-        _Example:_ `b!update 42%`
+        • `b!past`
+            Shows the past books read, requires a number of books to show
+            _Example:_ `b!past 3`
 
-        `b!progress`
-        Shows the progress shared by readers of the current book
+        • `b!add`
+            Add a book to the upcoming list for consideration, requires a title and author
+            If longer than a single word, wrap in quotes to keep clean
+            _Example:_ `b!add "Cujo" "Stephen King"`
 
-        `b!access`
-        Requests viewing and edit access to the Google Sheet and admin access to bot, requires a Google email address
-        _Example:_ `b!add garrett@shakethedisea.se` 
+        • `b!update`
+            Updates your progress so we can track when we're all done with the book, requires either page count or percentage as argument
+            _Example:_ `b!update 42%`
+
+        • `b!progress`
+            Shows the progress shared by readers of the current book
         '''
     )
 
