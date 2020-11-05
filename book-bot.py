@@ -238,7 +238,7 @@ async def update(ctx, progress: str):
         if progress[-1] == "%" and int(progress[:-1])<=100:
             progSheet.update_cell(curEntry.row, progCell, progress)
             embed = discord.Embed(
-                description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded. Everyone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
+                description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded :book:\n\nEveryone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
                 color = 9425531
             )
         elif progress[-1] != "%" and int(progress) <= pageCount:
@@ -246,7 +246,7 @@ async def update(ctx, progress: str):
             progress = str(int((progress/pageCount)*100))
             progSheet.update_cell(curEntry.row, progCell, progress+"%")
             embed = discord.Embed(
-                description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded. Everyone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
+                description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded :book:\n\nEveryone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
                 color = 9425531
             )
         else:
@@ -259,7 +259,7 @@ async def update(ctx, progress: str):
         if progress[-1] == "%" and int(progress[:-1]) <= 100:
             progSheet.append_row([ctx.message.author.name, progress])
             embed = discord.Embed(
-                description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded. Everyone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
+                description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded :book:\n\nEveryone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
                 color = 9425531
             )
         elif progress[-1] != "%" and int(progress) <= pageCount:
@@ -267,7 +267,7 @@ async def update(ctx, progress: str):
             progress = str(int((progress/pageCount)*100))
             progSheet.append_row([ctx.message.author.name, progress+"%"])
             embed = discord.Embed(
-                description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded. Everyone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
+                description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded :book:\n\nEveryone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
                 color = 9425531
             )
         else:
