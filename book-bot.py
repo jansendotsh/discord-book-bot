@@ -230,30 +230,52 @@ async def update(ctx, progress: str):
     progSheet = sheet.get_worksheet(2)
     curBook = sheet.get_worksheet(1).get_all_records()
     pageCount = int(curBook[0]['Pages'])
-
+        
     try:
         curEntry = progSheet.find(ctx.message.author.name)
         progCell = curEntry.col + 1
 
-        if progress[-1] == "%":
+        if progress[-1] == "%" and int(progress[:-1])<=100:
             progSheet.update_cell(curEntry.row, progCell, progress)
-        else:
+            embed = discord.Embed(
+                description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded. Everyone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
+                color = 9425531
+            )
+        elif progress[-1] != "%" and int(progress) <= pageCount:
             progress = int(progress)
             progress = str(int((progress/pageCount)*100))
             progSheet.update_cell(curEntry.row, progCell, progress+"%")
+            embed = discord.Embed(
+                description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded. Everyone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
+                color = 9425531
+            )
+        else:
+            embed = discord.Embed(
+                description = "This is an invalid value. If using page counts from a version other than the {} page edition, please use percentages.".format(pageCount),
+                color = 9425531
+            )
 
     except gspread.exceptions.CellNotFound:
-        if progress[-1] == "%":
+        if progress[-1] == "%" and int(progress[:-1]) <= 100:
             progSheet.append_row([ctx.message.author.name, progress])
-        else:
+            embed = discord.Embed(
+                description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded. Everyone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
+                color = 9425531
+            )
+        elif progress[-1] != "%" and int(progress) <= pageCount:
             progress = int(progress)
             progress = str(int((progress/pageCount)*100))
             progSheet.append_row([ctx.message.author.name, progress+"%"])
+            embed = discord.Embed(
+                description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded. Everyone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
+                color = 9425531
+            )
+        else:
+            embed = discord.Embed(
+                description = "This is an invalid value. If using page counts from a version other than the {} page edition, please use percentages.".format(pageCount),
+                color = 9425531
+            )
 
-    embed = discord.Embed(
-        description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded. Everyone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
-        color = 9425531
-    )
     embed.set_author(
         name="Progress Update",
         icon_url="https://s.jnsn.link/book/book.png"
@@ -262,7 +284,7 @@ async def update(ctx, progress: str):
         url="https://s.jnsn.link/book/bookmark.png"
     )
 
-    await ctx.message.channel.send(content=None, embed=embed)
+    await ctx.message.channel.send(content=None, embed=embed)    
 
 @update.error
 async def updateErr(ctx, error):
