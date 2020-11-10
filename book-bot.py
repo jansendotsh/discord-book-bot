@@ -1,4 +1,4 @@
-import os, discord, gspread
+import os, discord, gspread, random
 from discord.ext import commands
 from oauth2client.service_account import ServiceAccountCredentials
 
