@@ -208,7 +208,11 @@ async def swap(ctx):
 
     # Choose "next"
     upcoming = sheet.get_worksheet(0).get_all_records()
-
+    lengthUp = len(upcoming)
+    randoBook = random.randint(2,lengthUp+1)
+    newNext = sheet.get_worksheet(0).row_values(randoBook)
+    sheet.get_worksheet(3).insert_row(newNext,2)
+    sheet.get_worksheet(3).delete_rows(randoBook+1)
 
     embed = discord.Embed(
         description = "<@&773619465811263538> It's time to start the next book!\n\nWe're now reading **{}** by **{}**. Links for this book are available here:\n\n_Goodreads Link:_ \n{}\n_BookShop:_ \n{}\n_eBook Link:_ \n{}\n_Audiobook Link:_ \n{}".format(curBook[0]['Title'],curBook[0]['Author'],curBook[0]['Goodreads Link'],curBook[0]['BookShop Link'],curBook[0]['eBook Link'],curBook[0]['Audiobook Link']),
