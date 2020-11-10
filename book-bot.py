@@ -196,12 +196,19 @@ async def addErr(ctx, error):
 @chanCheck()
 @adminCheck()
 async def swap(ctx):
+    # Grab next book, insert into "past", remove from upcoming
     nextUp = sheet.get_worksheet(0).row_values(2)
     sheet.get_worksheet(1).insert_row(nextUp,2)
     sheet.get_worksheet(0).delete_rows(2)
     curBook = sheet.get_worksheet(1).get_all_records()
+
+    # Clear progress
     progSheet = sheet.get_worksheet(2)
     progSheet.delete_rows(2,len(progSheet.get_all_records())+1)
+
+    # Choose "next"
+    upcoming = sheet.get_worksheet(0).get_all_records()
+
 
     embed = discord.Embed(
         description = "<@&773619465811263538> It's time to start the next book!\n\nWe're now reading **{}** by **{}**. Links for this book are available here:\n\n_Goodreads Link:_ \n{}\n_BookShop:_ \n{}\n_eBook Link:_ \n{}\n_Audiobook Link:_ \n{}".format(curBook[0]['Title'],curBook[0]['Author'],curBook[0]['Goodreads Link'],curBook[0]['BookShop Link'],curBook[0]['eBook Link'],curBook[0]['Audiobook Link']),
