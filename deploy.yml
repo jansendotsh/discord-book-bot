@@ -5,8 +5,6 @@
 
   tasks:
   - name: Pull Book Bot repo updates
-    become: yes
-    become_user: root
     git:
       repo: "https://github.com/jansendotsh/discord-book-bot.git"
       dest: "/data/book-bot"
@@ -14,26 +12,20 @@
       update: yes
 
   - name: Stop Book Bot daemon
-    become: yes
-    become_user: root
     systemd:
       name: bookbot
       state: stopped
 
   - name: Delete Docker image
-    become: yes
-    become_user: root
     docker_image:
       name: book-bot
-      tag: "0.1"
+      tag: "latest"
       state: absent
 
   - name: Building Docker image
-    become: yes
-    become_user: root
     docker_image:
       name: book-bot
-      tag: "0.1"
+      tag: "latest"
       build:
         path: /data/book-bot
         pull: yes
@@ -41,8 +33,6 @@
       state: present
 
   - name: Start Book Bot daemon
-    become: yes
-    become_user: root
     systemd:
       name: bookbot
       state: started

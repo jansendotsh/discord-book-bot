@@ -12,7 +12,7 @@ Restart=always
 WorkingDirectory=/data/book-bot
 PIDFile=/data/book-bot/process.pid
 ExecStartPre=-/usr/bin/docker rm book-bot
-ExecStart=/usr/bin/docker run --name book-bot --rm -v "/data/book-bot/key.json:/usr/src/app/key.json:z" -e DISCORD_TOKEN='<BOT_TOKEN>' book-bot:0.1
+ExecStart=/usr/bin/docker run --name book-bot --rm -v "/data/book-bot/key.json:/usr/src/app/key.json:z" -e DISCORD_TOKEN='<BOT_TOKEN>' book-bot:latest
 
 [Install]
 WantedBy=multi-user.target

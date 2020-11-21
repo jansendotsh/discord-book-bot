@@ -23,8 +23,8 @@ python book-bot.py
 
 In Docker:
 ```
-docker build -t book-bot:0.1
-docker run -v $(pwd)/key.json:/usr/src/app/key.json -e DISCORD_TOKEN='<DISCORD-BOT-TOKEN>' --rm book-bot:0.1
+docker build -t book-bot:latest
+docker run -v $(pwd)/key.json:/usr/src/app/key.json -e DISCORD_TOKEN='<DISCORD-BOT-TOKEN>' --rm book-bot:latest
 ```
 
 Deploying Docker image via Ansible:
