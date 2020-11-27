@@ -1,17 +1,41 @@
-import os, discord, gspread, random
+import os, discord, mysql.connector, socket, time
 from discord.ext import commands
 from oauth2client.service_account import ServiceAccountCredentials
+from goodreads import client as gcclient
+
+# Wait for database response
+def isOpen(ip,port):
+   s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+   try:
+      s.connect((ip, int(port)))
+      s.shutdown(2)
+      return True
+   except:
+      return False
+
+while isOpen("db",3306) == False:
+    print("Database unavailable")
+    time.sleep(1)
+
+# MySQL data source
+bookdb = mysql.connector.connect(
+    host="db",
+    user=os.getenv('MYSQL_USER'),
+    password=os.getenv('MYSQL_PASSWORD'),
+    database=os.getenv('MYSQL_DATABASE')
+)
+
+cursor = bookdb.cursor()
 
 # Discord env
 discordToken = os.getenv('DISCORD_TOKEN')
-client = commands.Bot(command_prefix = 'b!')
+client = commands.Bot(command_prefix = 'beta!')
 client.remove_command('help')
 adminList = [176108473958924289]
 bookChan = 764982805427912705
 
-# Google Sheets env
-gc = gspread.service_account(filename='key.json')
-sheet = gc.open_by_key("1VoR6d3Vwbhk5sxh18jUwtSZP3hr_hBjUn2CDSmBQzus")
+# Goodreads API
+gc = gcclient.GoodreadsClient(os.getenv('GOODREADS_KEY'), os.getenv('GOODREADS_SECRET'))
 
 # Starting log
 @client.event
@@ -39,12 +63,12 @@ def adminCheck():
         return True
     return commands.check(predicate)
 
-# Insert events here
+# Commands
+## Help 
 @client.command()
-@chanCheck()
 async def help(ctx):
     embed = discord.Embed(
-        description = "This is a help page that includes available commands. Expect to see more added soon.\n",
+        description = "This is a help page that includes available commands.\n",
         color = 9425531
     )
     embed.set_author(
@@ -57,47 +81,46 @@ async def help(ctx):
     embed.add_field(
         name="**Commands:**",
         value='''
-        • `b!current`
-            See the current book along with information and related links
+This is a very incomplete beta and will be expanded upon in the future. 
 
-        • `b!next`
-            Displays the next book along with information for calling a vote if not accurate
-
-        • `b!past`
-            Shows the past books read, requires a number of books to show
-            _Example:_ `b!past 3`
-
-        • `b!add`
-            Add a book to the upcoming list for consideration, requires a title and author
-            If longer than a single word, wrap in quotes to keep clean
-            _Example:_ `b!add "Cujo" "Stephen King"`
-
-        • `b!update`
-            Updates your progress so we can track when we're all done with the book, requires either page count or percentage as argument
-            _Example:_ `b!update 42%`
-
-        • `b!progress`
-            Shows the progress shared by readers of the current book
+• `b!past`
+  See the current book along with information and related links
         '''
     )
 
     await ctx.message.channel.send(content=None, embed=embed)
 
-@help.error
-async def helpErr(ctx, error):
-    if isinstance(error, wrongChannel):
-        await ctx.send(error)
+## Search
+@client.command(name='search')
+async def search(ctx, *, term):
+    bookSearch = gc.search_books(term)
+    author = ""
+    title = bookSearch[0]._book_dict['title']
+    grid = bookSearch[0]._book_dict['id']
+    pageCount = bookSearch[0]._book_dict['num_pages']
 
-@client.command()
-@chanCheck()
-async def current(ctx):
-    curBook = sheet.get_worksheet(1).get_all_records()
+    if isinstance(bookSearch[0]._book_dict['authors']['author'], list):
+        for i in bookSearch[0]._book_dict['authors']['author']:
+            if i['role'] == None:
+                author += "{}, ".format(i['name'])
+            if i['role'] != None:
+                author += "{} ({}), ".format(i['name'], i['role'])
+
+        author = author[:-2]
+
+    elif isinstance(bookSearch[0]._book_dict['authors']['author'], dict):
+        author = bookSearch[0]._book_dict['authors']['author']['name']
+
     embed = discord.Embed(
-        description = "The current book is **{}** by **{}**. Information and downloads are available here:\n\n_Goodreads:_ \n{}\n_BookShop:_ \n{}\n_eBook Link:_ \n{}\n_Audiobook Link:_ \n{}".format(curBook[0]['Title'],curBook[0]['Author'],curBook[0]['Goodreads Link'],curBook[0]['BookShop Link'],curBook[0]['eBook Link'],curBook[0]['Audiobook Link']),
+        description = "   ",
         color = 9425531
     )
+    embed.add_field(
+        name="Search results...",
+        value="Here is what you sent:\n{}\n\nHere is what we found:\n**Author:** {}\n**Title:** {}\n**Goodreads ID:** {}\n**Page count:** {}\n\n**[Goodreads](https://www.goodreads.com/book/show/{})** \n**[Indiebound](https://www.goodreads.com/book_link/follow/7?book_id={})** ".format(term, author, title, grid, pageCount, grid, grid)
+    )
     embed.set_author(
-        name="Current Book",
+        name="This is a beta search with Goodreads API",
         icon_url="https://s.jnsn.link/book/book.png"
     )
     embed.set_thumbnail(
@@ -105,32 +128,23 @@ async def current(ctx):
     )
 
     await ctx.message.channel.send(content=None, embed=embed)
-
-@current.error
-async def currentErr(ctx, error):
-    if isinstance(error, wrongChannel):
-        await ctx.send(error)
-
+    
+## Past books
 @client.command(name='past')
-@chanCheck()
-async def past(ctx, length: int):
-    pastBook = sheet.get_worksheet(1).get_all_records()
+async def past(ctx):
+    query = ("SELECT * FROM past ORDER BY title desc limit 1")
+    cursor.execute(query)
+    pastBook = cursor.fetchone()
+
     embed = discord.Embed(
-        description = "These were the most recent (including current) books from outer space:",
+        description = "These were the most recent books from outer space:",
         color = 9425531
     )
-    if len(pastBook) >= length:
-        for i in range(0,length,1):
-            embed.add_field(
-                name = "{} by {}".format(pastBook[i]['Title'],pastBook[i]['Author']),
-                value = "_Goodreads Link:_ \n{}\n_BookShop:_ \n{}\n_eBook Link:_ \n{}\n_Audiobook Link:_ \n{}".format(pastBook[i]['Goodreads Link'],pastBook[i]['BookShop Link'],pastBook[i]['eBook Link'],pastBook[i]['Audiobook Link'])
-            )
-    else:
-        for i in range(0,len(pastBook),1):
-            embed.add_field(
-                name = "{} by {}".format(pastBook[i]['Title'],pastBook[i]['Author']),
-                value = "_Goodreads Link:_ \n{}\n_BookShop:_ \n{}\n_eBook Link:_ \n{}\n_Audiobook Link:_ \n{}".format(pastBook[i]['Goodreads Link'],pastBook[i]['BookShop Link'],pastBook[i]['eBook Link'],pastBook[i]['Audiobook Link'])
-            )
+
+    embed.add_field(
+        name = "Last book:",
+        value = "{}".format(pastBook)
+    )
     embed.set_author(
         name="Past Books",
         icon_url="https://s.jnsn.link/book/book.png"
@@ -141,204 +155,5 @@ async def past(ctx, length: int):
 
     await ctx.message.channel.send(content=None, embed=embed)
 
-@past.error
-async def pastErr(ctx, error):
-    if isinstance(error, wrongChannel):
-        await ctx.send(error)
-
-@client.command()
-@chanCheck()
-async def next(ctx):
-    upcoming = sheet.get_worksheet(0).get_all_records()
-    embed = discord.Embed(
-        description = "The next book is **{}** by **{}**.\n\nLinks related to this titled are available here:\n\n_Goodreads Link:_ \n{}\n_BookShop:_ \n{}\n_eBook Link:_ \n{}\n_Audiobook Link:_ \n{}\n\nIf this is incorrect, review the spreadsheet and call a vote. Spreadsheet available here:\n\nhttps://jnsn.link/bookclub".format(upcoming[0]['Title'],upcoming[0]['Author'],upcoming[0]['Goodreads Link'],upcoming[0]['BookShop Link'],upcoming[0]['eBook Link'],upcoming[0]['Audiobook Link']),
-        color = 9425531
-    )
-    embed.set_author(
-        name="Next Book",
-        icon_url="https://s.jnsn.link/book/book.png"
-    )
-    embed.set_thumbnail(
-        url="https://s.jnsn.link/book/bookmark.png"
-    )
-
-    await ctx.message.channel.send(content=None, embed=embed)
-
-@next.error
-async def nextErr(ctx, error):
-    if isinstance(error, wrongChannel):
-        await ctx.send(error)
-
-@client.command()
-@chanCheck()
-async def add(ctx, title: str, author: str):
-    sheet.get_worksheet(0).append_row([title, author])
-    embed = discord.Embed(
-        description = "The following book has been added:\n\n**{}** by **{}**\n\nThis can be verified here: https://jnsn.link/bookclub".format(title, author),
-        color = 9425531
-    )
-    embed.set_author(
-        name="Added Book",
-        icon_url="https://s.jnsn.link/book/book.png"
-    )
-    embed.set_thumbnail(
-        url="https://s.jnsn.link/book/bookmark.png"
-    )
-
-    await ctx.message.channel.send(content=None, embed=embed)
-
-@add.error
-async def addErr(ctx, error):
-    if isinstance(error, wrongChannel):
-        await ctx.send(error)
-
-@client.command()
-@chanCheck()
-@adminCheck()
-async def swap(ctx):
-    # Grab next book, insert into "past", remove from upcoming
-    nextUp = sheet.get_worksheet(0).row_values(2)
-    sheet.get_worksheet(1).insert_row(nextUp,2)
-    sheet.get_worksheet(0).delete_rows(2)
-    curBook = sheet.get_worksheet(1).get_all_records()
-
-    # Clear progress
-    progSheet = sheet.get_worksheet(2)
-    progSheet.delete_rows(2,len(progSheet.get_all_records())+1)
-
-    # Choose "next"
-    upcoming = sheet.get_worksheet(0).get_all_records()
-    lengthUp = len(upcoming)
-    randoBook = random.randint(2,lengthUp+1)
-    newNext = sheet.get_worksheet(0).row_values(randoBook)
-    sheet.get_worksheet(0).insert_row(newNext,2)
-    sheet.get_worksheet(0).delete_rows(randoBook+1)
-
-    embed = discord.Embed(
-        description = "<@&773619465811263538> It's time to start the next book!\n\nWe're now reading **{}** by **{}**. Links for this book are available here:\n\n_Goodreads Link:_ \n{}\n_BookShop:_ \n{}\n_eBook Link:_ \n{}\n_Audiobook Link:_ \n{}".format(curBook[0]['Title'],curBook[0]['Author'],curBook[0]['Goodreads Link'],curBook[0]['BookShop Link'],curBook[0]['eBook Link'],curBook[0]['Audiobook Link']),
-        color = 9425531
-    )
-    embed.set_author(
-        name="New Book Started",
-        icon_url="https://s.jnsn.link/book/book.png"
-    )
-    embed.set_thumbnail(
-        url="https://s.jnsn.link/book/bookmark.png"
-    )
-    
-    await ctx.message.channel.send(content=None, embed=embed)
-
-@swap.error
-async def swapErr(ctx, error):
-    if isinstance(error, wrongChannel):
-        await ctx.send(error)
-    elif isinstance(error, notAdmin):
-        await ctx.send(error)
-
-@client.command()
-@chanCheck()
-async def update(ctx, progress: str):
-    progSheet = sheet.get_worksheet(2)
-    curBook = sheet.get_worksheet(1).get_all_records()
-    pageCount = int(curBook[0]['Pages'])
-        
-    try:
-        curEntry = progSheet.find(ctx.message.author.name)
-        progCell = curEntry.col + 1
-
-        if progress[-1] == "%" and int(progress[:-1])<=100:
-            progSheet.update_cell(curEntry.row, progCell, progress)
-            embed = discord.Embed(
-                description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded :book:\n\nEveryone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
-                color = 9425531
-            )
-        elif progress[-1] != "%" and int(progress) <= pageCount:
-            progress = int(progress)
-            progress = str(int((progress/pageCount)*100))
-            progSheet.update_cell(curEntry.row, progCell, progress+"%")
-            embed = discord.Embed(
-                description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded :book:\n\nEveryone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
-                color = 9425531
-            )
-        else:
-            embed = discord.Embed(
-                description = "This is an invalid value. If using page counts from a version other than the {} page edition, please use percentages.".format(pageCount),
-                color = 9425531
-            )
-
-    except gspread.exceptions.CellNotFound:
-        if progress[-1] == "%" and int(progress[:-1]) <= 100:
-            progSheet.append_row([ctx.message.author.name, progress])
-            embed = discord.Embed(
-                description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded :book:\n\nEveryone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
-                color = 9425531
-            )
-        elif progress[-1] != "%" and int(progress) <= pageCount:
-            progress = int(progress)
-            progress = str(int((progress/pageCount)*100))
-            progSheet.append_row([ctx.message.author.name, progress+"%"])
-            embed = discord.Embed(
-                description = "Congrats, {}. Your progress for **{}** by **{}** has been recorded :book:\n\nEveryone's progress can be viewed with `b!progress`".format(ctx.message.author.name, curBook[0]['Title'],curBook[0]['Author']),
-                color = 9425531
-            )
-        else:
-            embed = discord.Embed(
-                description = "This is an invalid value. If using page counts from a version other than the {} page edition, please use percentages.".format(pageCount),
-                color = 9425531
-            )
-
-    embed.set_author(
-        name="Progress Update",
-        icon_url="https://s.jnsn.link/book/book.png"
-    )
-    embed.set_thumbnail(
-        url="https://s.jnsn.link/book/bookmark.png"
-    )
-
-    await ctx.message.channel.send(content=None, embed=embed)    
-
-@update.error
-async def updateErr(ctx, error):
-    if isinstance(error, wrongChannel):
-        await ctx.send(error)
-
-@client.command()
-@chanCheck()
-async def progress(ctx):
-    progSheet = sheet.get_worksheet(2).get_all_records()
-    curBook = sheet.get_worksheet(1).get_all_records()
-    progBar = 0
-    progLeft = 10
-
-    progGroup = ""
-
-    for i in range(0,len(progSheet),1):
-        percentage = int(progSheet[i]['Progress'][:-1])
-        progBar = int(percentage/10)
-        progLeft = 10-progBar
-        progGroup += "*{}:*\n{}{} {}\n\n".format(progSheet[i]['Username'],progBar*"█",progLeft*"░", progSheet[i]['Progress'])
-
-    embed = discord.Embed(
-        description = "Hey there :wave: Here is the progress for those reading **{}** by **{}**.".format(curBook[0]['Title'],curBook[0]['Author']),
-        color = 9425531
-    )
-    embed.set_author(
-        name="Book Progress",
-        icon_url="https://s.jnsn.link/book/book.png"
-    )
-    embed.set_thumbnail(
-        url="https://s.jnsn.link/book/bookmark.png"
-    )
-    embed.add_field(
-        name="**Current readers:**",
-        value=progGroup
-    )
-
-    await ctx.message.channel.send(content=None, embed=embed)
-
-@progress.error
-async def progErr(ctx, error):
-    if isinstance(error, wrongChannel):
-        await ctx.send(error)
-
+# Starting Discord listener
 client.run(discordToken)
