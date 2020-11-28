@@ -1,4 +1,4 @@
-import os, discord, mysql.connector, socket, time
+import os, discord, mysql.connector, socket, time, asyncio
 from discord.ext import commands
 from oauth2client.service_account import ServiceAccountCredentials
 from goodreads import client as gcclient
@@ -93,31 +93,13 @@ This is a very incomplete beta and will be expanded upon in the future.
 ## Search
 @client.command(name='search')
 async def search(ctx, *, term):
-    bookSearch = gc.search_books(term)
-    author = ""
-    title = bookSearch[0]._book_dict['title']
-    grid = bookSearch[0]._book_dict['id']
-    pageCount = bookSearch[0]._book_dict['num_pages']
-
-    if isinstance(bookSearch[0]._book_dict['authors']['author'], list):
-        for i in bookSearch[0]._book_dict['authors']['author']:
-            if i['role'] == None:
-                author += "{}, ".format(i['name'])
-            if i['role'] != None:
-                author += "{} ({}), ".format(i['name'], i['role'])
-
-        author = author[:-2]
-
-    elif isinstance(bookSearch[0]._book_dict['authors']['author'], dict):
-        author = bookSearch[0]._book_dict['authors']['author']['name']
+    upvote = '👍'
+    downvote = '👎'
+    emojis = [upvote, downvote]
 
     embed = discord.Embed(
         description = "   ",
         color = 9425531
-    )
-    embed.add_field(
-        name="Search results...",
-        value="Here is what you sent:\n{}\n\nHere is what we found:\n**Author:** {}\n**Title:** {}\n**Goodreads ID:** {}\n**Page count:** {}\n\n**[Goodreads](https://www.goodreads.com/book/show/{})** \n**[Indiebound](https://www.goodreads.com/book_link/follow/7?book_id={})** ".format(term, author, title, grid, pageCount, grid, grid)
     )
     embed.set_author(
         name="This is a beta search with Goodreads API",
@@ -126,8 +108,84 @@ async def search(ctx, *, term):
     embed.set_thumbnail(
         url="https://s.jnsn.link/book/bookmark.png"
     )
+    embed.add_field(
+        name="Search results:",
+        value="*Currently searching for \"{}\". The search can take a moment.*".format(term)
+    )
+    msg = await ctx.message.channel.send(content=None, embed=embed)
 
-    await ctx.message.channel.send(content=None, embed=embed)
+    b = 0
+    bookSearch = gc.search_books(term)
+
+    async def grSearch(b):
+        try:
+            title = bookSearch[b]._book_dict['title']
+            grid = bookSearch[b]._book_dict['id']
+            pageCount = bookSearch[b]._book_dict['num_pages']
+            author = ""
+
+            if isinstance(bookSearch[b]._book_dict['authors']['author'], list):
+                for i in bookSearch[b]._book_dict['authors']['author']:
+                    if i['role'] == None:
+                        author += "{}, ".format(i['name'])
+                    if i['role'] != None:
+                        author += "{} ({}), ".format(i['name'], i['role'])
+
+                author = author[:-2]
+
+            elif isinstance(bookSearch[b]._book_dict['authors']['author'], dict):
+                author = bookSearch[b]._book_dict['authors']['author']['name']
+
+            embed.clear_fields()
+            embed.add_field(
+                name="Search results:",
+                value="Here is what you sent:\n{}\n\nHere is what we found:\n**Author:** {}\n**Title:** {}\n**Goodreads ID:** {}\n**Page count:** {}\n\n**[Goodreads](https://www.goodreads.com/book/show/{})** \n**[Indiebound](https://www.goodreads.com/book_link/follow/7?book_id={})** ".format(term, author, title, grid, pageCount, grid, grid)
+            )
+            await msg.edit(embed=embed)
+            await msg.add_reaction(upvote)
+            await msg.add_reaction(downvote)
+
+        except:
+            embed.clear_fields()
+            embed.add_field(
+                name="Search results:",
+                value="No results found. Please try your search again.\n\n**Tip:** Make sure your search works on [Goodreads](https://www.goodreads.com/) as that's the source for books."
+            )
+            await msg.edit(embed=embed)
+    
+    await grSearch(b)
+
+    def check(reaction, user):
+        return user == ctx.message.author
+
+    while emojis:
+        try:
+            res = await client.wait_for(event='reaction_add', timeout=60.0, check=lambda reaction, user: user == ctx.message.author)
+            if res:
+                reaction, user = res
+                emojis = [e for e in emojis if e != reaction]
+                if reaction.emoji == upvote:                    
+                    embed.clear_fields()
+                    embed.add_field(
+                        name="Added to upcoming books",
+                        value="You can view upcoming books here..."
+                    )
+                    await msg.edit(embed=embed)
+                    await msg.clear_reactions()
+                    break
+                if reaction.emoji == downvote:                    
+                    b += 1
+                    await grSearch(b)
+                    await msg.remove_reaction(downvote, ctx.message.author)
+
+        except asyncio.TimeoutError:
+            embed.clear_fields()
+            embed.add_field(
+                name="Search results:",
+                value="*Search timed out awaiting your response. Please try again.*"
+            )
+            await msg.edit(embed=embed)
+            await msg.clear_reactions()
     
 ## Past books
 @client.command(name='past')
