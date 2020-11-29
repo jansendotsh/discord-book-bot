@@ -1,4 +1,4 @@
-import os, discord, mysql.connector, socket, time, asyncio
+import os, discord, mysql.connector, socket, time, csv, asyncio
 from discord.ext import commands
 from oauth2client.service_account import ServiceAccountCredentials
 from goodreads import client as gcclient
@@ -33,6 +33,8 @@ client = commands.Bot(command_prefix = 'beta!')
 client.remove_command('help')
 adminList = [176108473958924289]
 bookChan = 764982805427912705
+upvote = '👍'
+downvote = '👎'
 
 # Goodreads API
 gc = gcclient.GoodreadsClient(os.getenv('GOODREADS_KEY'), os.getenv('GOODREADS_SECRET'))
@@ -43,6 +45,10 @@ async def on_ready():
     print('Book Bot has started')
 
 # Checks
+## this first check has been reduced to a lambda, doesn't take additional lines and isn't complex. delete this
+def check(reaction, user):
+    return user == ctx.message.author
+
 class wrongChannel(commands.CheckFailure):
     pass
 
@@ -69,7 +75,7 @@ def adminCheck():
 async def help(ctx):
     embed = discord.Embed(
         description = "This is a help page that includes available commands.\n",
-        color = 9425531
+        color = discord.Color.red()
     )
     embed.set_author(
         name="Help & Commands",
@@ -88,18 +94,17 @@ This is a very incomplete beta and will be expanded upon in the future.
         '''
     )
 
-    await ctx.message.channel.send(content=None, embed=embed)
+    await ctx.message.channel.send(content=None, embed=embed, delete_after=60)
 
-## Search
-@client.command(name='search')
-async def search(ctx, *, term):
-    upvote = '👍'
-    downvote = '👎'
+## Add
+@client.command(name='add')
+async def add(ctx, *, term):
+
     emojis = [upvote, downvote]
 
     embed = discord.Embed(
         description = "   ",
-        color = 9425531
+        color = discord.Color.red()
     )
     embed.set_author(
         name="This is a beta search with Goodreads API",
@@ -112,7 +117,7 @@ async def search(ctx, *, term):
         name="Search results:",
         value="*Currently searching for \"{}\". The search can take a moment.*".format(term)
     )
-    msg = await ctx.message.channel.send(content=None, embed=embed)
+    msg = await ctx.message.channel.send(content=None, embed=embed, delete_after=60)
 
     b = 0
     bookSearch = gc.search_books(term)
@@ -141,7 +146,7 @@ async def search(ctx, *, term):
                 name="Search results:",
                 value="Here is what you sent:\n{}\n\nHere is what we found:\n**Author:** {}\n**Title:** {}\n**Goodreads ID:** {}\n**Page count:** {}\n\n**[Goodreads](https://www.goodreads.com/book/show/{})** \n**[Indiebound](https://www.goodreads.com/book_link/follow/7?book_id={})** ".format(term, author, title, grid, pageCount, grid, grid)
             )
-            await msg.edit(embed=embed)
+            await msg.edit(embed=embed, delete_after=60)
             await msg.add_reaction(upvote)
             await msg.add_reaction(downvote)
 
@@ -151,67 +156,150 @@ async def search(ctx, *, term):
                 name="Search results:",
                 value="No results found. Please try your search again.\n\n**Tip:** Make sure your search works on [Goodreads](https://www.goodreads.com/) as that's the source for books."
             )
-            await msg.edit(embed=embed)
+            await msg.edit(embed=embed, delete_after=60)
+            await msg.clear_reactions()
     
     await grSearch(b)
 
-    def check(reaction, user):
-        return user == ctx.message.author
-
     while emojis:
-        try:
-            res = await client.wait_for(event='reaction_add', timeout=60.0, check=lambda reaction, user: user == ctx.message.author)
-            if res:
-                reaction, user = res
-                emojis = [e for e in emojis if e != reaction]
-                if reaction.emoji == upvote:                    
-                    embed.clear_fields()
-                    embed.add_field(
-                        name="Added to upcoming books",
-                        value="You can view upcoming books here..."
-                    )
-                    await msg.edit(embed=embed)
-                    await msg.clear_reactions()
-                    break
-                if reaction.emoji == downvote:                    
-                    b += 1
-                    await grSearch(b)
-                    await msg.remove_reaction(downvote, ctx.message.author)
-
-        except asyncio.TimeoutError:
-            embed.clear_fields()
-            embed.add_field(
-                name="Search results:",
-                value="*Search timed out awaiting your response. Please try again.*"
-            )
-            await msg.edit(embed=embed)
-            await msg.clear_reactions()
-    
+        res = await client.wait_for(event='reaction_add', check=lambda reaction, user: user == ctx.message.author)
+        if res:
+            reaction, user = res
+            emojis = [e for e in emojis if e != reaction]
+            if reaction.emoji == upvote:                    
+                embed.clear_fields()
+                embed.add_field(
+                    name="Added to upcoming books",
+                    value="You can view upcoming books here..."
+                )
+                await msg.edit(embed=embed, delete_after=60)
+                await msg.clear_reactions()
+                break
+            if reaction.emoji == downvote:                    
+                b += 1
+                await grSearch(b)
+                await msg.remove_reaction(downvote, ctx.message.author)
+   
 ## Past books
-@client.command(name='past')
-async def past(ctx):
-    query = ("SELECT * FROM past ORDER BY title desc limit 1")
+@client.command(name='last')
+async def last(ctx):
+    emojis = [upvote]
+
+    query = ("SELECT * FROM past ORDER BY id desc")
     cursor.execute(query)
-    pastBook = cursor.fetchone()
+    pastBook = cursor.fetchall()
 
     embed = discord.Embed(
-        description = "These were the most recent books from outer space:",
-        color = 9425531
+        description = "This is the most recent book that have been read and discussed:",
+        color = discord.Color.red()
     )
-
     embed.add_field(
-        name = "Last book:",
-        value = "{}".format(pastBook)
+        name = "**{}** by **{}**".format(pastBook[0][1],pastBook[0][2]),
+        value = "\n*[Goodreads](https://www.goodreads.com/book/show/{})*\n*[Indiebound](https://www.goodreads.com/book_link/follow/7?book_id={})*\n*[Amazon](https://www.goodreads.com/buy_buttons/12/follow?book_id={})*\n*[eBook Link]({})*\n*[Audiobook Link]({})*\n\nDo you want a list of all previous books read and discussed?".format(pastBook[0][4],pastBook[0][4],pastBook[0][4],pastBook[0][5],pastBook[0][6])
     )
     embed.set_author(
-        name="Past Books",
+        name="Most recent book",
         icon_url="https://s.jnsn.link/book/book.png"
     )
     embed.set_thumbnail(
         url="https://s.jnsn.link/book/bookmark.png"
     )
 
-    await ctx.message.channel.send(content=None, embed=embed)
+    msg = await ctx.message.channel.send(content=None, embed=embed, delete_after=60)
+    await msg.add_reaction(upvote)
+
+    while emojis:
+        res = await client.wait_for(event='reaction_add', check=lambda reaction, user: user == ctx.message.author)
+        if res:
+            reaction, user = res
+            emojis = [e for e in emojis if e != reaction]
+            if reaction.emoji == upvote:                    
+                fields = ["id","title","author","pages","goodreads_id","ebook_link","audiobook_link"]
+
+                with open('past.csv', 'w') as f: 
+                    write = csv.writer(f) 
+                    write.writerow(fields)
+                    write.writerows(pastBook)
+
+                file = discord.File('past.csv', filename="past.csv")
+
+                await ctx.message.author.send(content="Here's that spreadsheet with all previously read and discussed books", file=file)
+                break
+
+## Next book
+@client.command(name='next')
+async def next(ctx):
+    emojis = [upvote]
+
+    nextQuery = ("SELECT * FROM next")
+    cursor.execute(nextQuery)
+    nextBook = cursor.fetchall()
+
+    embed = discord.Embed(
+        description = "This is the most recent book that have been read and discussed:",
+        color = discord.Color.red()
+    )
+    embed.add_field(
+        name = "**{}** by **{}**".format(nextBook[0][1],nextBook[0][2]),
+        value = "\n*[Goodreads](https://www.goodreads.com/book/show/{})*\n*[Indiebound](https://www.goodreads.com/book_link/follow/7?book_id={})*\n*[Amazon](https://www.goodreads.com/buy_buttons/12/follow?book_id={})*\n*[eBook Link]({})*\n*[Audiobook Link]({})*\n\nDo you want a list of all upcoming books?".format(nextBook[0][4],nextBook[0][4],nextBook[0][4],nextBook[0][5],nextBook[0][6])
+    )
+    embed.set_author(
+        name="Most recent book",
+        icon_url="https://s.jnsn.link/book/book.png"
+    )
+    embed.set_thumbnail(
+        url="https://s.jnsn.link/book/bookmark.png"
+    )
+
+    msg = await ctx.message.channel.send(content=None, embed=embed, delete_after=60)
+    await msg.add_reaction(upvote)
+
+    while emojis:
+        res = await client.wait_for(event='reaction_add', check=lambda reaction, user: user == ctx.message.author)
+        if res:
+            reaction, user = res
+            emojis = [e for e in emojis if e != reaction]
+            if reaction.emoji == upvote:                    
+                poolQuery = ("SELECT * FROM pool")
+                cursor.execute(poolQuery)
+                poolBook = cursor.fetchall()
+
+                fields = ["id","title","author","pages","goodreads_id","ebook_link","audiobook_link"]
+
+                with open('upcoming.csv', 'w') as f: 
+                    write = csv.writer(f) 
+                    write.writerow(fields)
+                    write.writerows(poolBook)
+
+                file = discord.File('upcoming.csv', filename="upcoming.csv")
+
+                await ctx.message.author.send(content="Here's that spreadsheet with all books already added to our upcoming pool for reading and discussion:", file=file)
+                break
+
+## Current book
+@client.command(name='current')
+async def current(ctx):
+    query = ("SELECT * FROM current WHERE id = 1")
+    cursor.execute(query)
+    curBook = cursor.fetchall()
+
+    embed = discord.Embed(
+        description = "This is the book that we're currently reading:",
+        color = discord.Color.red()
+    )
+    embed.add_field(
+        name = "**{}** by **{}**".format(curBook[0][1],curBook[0][2]),
+        value = "\n*[Goodreads](https://www.goodreads.com/book/show/{})*\n*[Indiebound](https://www.goodreads.com/book_link/follow/7?book_id={})*\n*[Amazon](https://www.goodreads.com/buy_buttons/12/follow?book_id={})*\n*[eBook Link]({})*\n*[Audiobook Link]({})*".format(curBook[0][4],curBook[0][4],curBook[0][4],curBook[0][5],curBook[0][6])
+    )
+    embed.set_author(
+        name="Current book",
+        icon_url="https://s.jnsn.link/book/book.png"
+    )
+    embed.set_thumbnail(
+        url="https://s.jnsn.link/book/bookmark.png"
+    )
+
+    msg = await ctx.message.channel.send(content=None, embed=embed, delete_after=60)
 
 # Starting Discord listener
 client.run(discordToken)
