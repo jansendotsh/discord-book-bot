@@ -35,6 +35,8 @@ adminList = [176108473958924289]
 bookChan = 764982805427912705
 upvote = '👍'
 downvote = '👎'
+avatar = discord.File('avatar.png')
+postIcon = discord.File('icon.png')
 
 # Goodreads API
 gc = gcclient.GoodreadsClient(os.getenv('GOODREADS_KEY'), os.getenv('GOODREADS_SECRET'))
@@ -45,10 +47,6 @@ async def on_ready():
     print('Book Bot has started')
 
 # Checks
-## this first check has been reduced to a lambda, doesn't take additional lines and isn't complex. delete this
-def check(reaction, user):
-    return user == ctx.message.author
-
 class wrongChannel(commands.CheckFailure):
     pass
 
@@ -80,6 +78,7 @@ async def help(ctx):
     embed.set_author(
         name="Help & Commands",
         icon_url="https://s.jnsn.link/book/book.png"
+
     )
     embed.set_thumbnail(
         url="https://s.jnsn.link/book/bookmark.png"
@@ -269,6 +268,7 @@ async def next(ctx):
                 with open('upcoming.csv', 'w') as f: 
                     write = csv.writer(f) 
                     write.writerow(fields)
+                    write.writerows(nextBook)
                     write.writerows(poolBook)
 
                 file = discord.File('upcoming.csv', filename="upcoming.csv")
