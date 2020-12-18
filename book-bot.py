@@ -98,7 +98,7 @@ async def help(ctx):
 @help.error
 async def helpErr(ctx, error):
     if isinstance(error, wrongChannel):
-        await ctx.send(error)
+        await ctx.send(error, delete_after=60)
 
 ## Add
 @client.command(name='add')
@@ -200,7 +200,7 @@ async def add(ctx, *, term):
 @add.error
 async def addErr(ctx, error):
     if isinstance(error, wrongChannel):
-        await ctx.send(error)
+        await ctx.send(error, delete_after=60)
    
 ## Past books
 @client.command(name='last')
@@ -252,7 +252,7 @@ async def last(ctx):
 @last.error
 async def lastErr(ctx, error):
     if isinstance(error, wrongChannel):
-        await ctx.send(error)
+        await ctx.send(error, delete_after=60)
 
 ## Next book
 @client.command(name='next')
@@ -309,7 +309,7 @@ async def next(ctx):
 @next.error
 async def nextErr(ctx, error):
     if isinstance(error, wrongChannel):
-        await ctx.send(error)
+        await ctx.send(error, delete_after=60)
 
 ## Current book
 @client.command(name='current')
@@ -340,7 +340,7 @@ async def current(ctx):
 @current.error
 async def currentErr(ctx, error):
     if isinstance(error, wrongChannel):
-        await ctx.send(error)
+        await ctx.send(error, delete_after=60)
 
 ## Progress update
 @client.command(name='update')
@@ -367,7 +367,7 @@ async def update(ctx, progress: str):
         embDesc = "An error occurred while updating your progress. Please try again with a percentage (i.e. `75%`)."
 
     if progCheck > 0:
-        query = ("UPDATE progress SET progress = ? WHERE USER = ?")
+        query = ("UPDATE progress SET progress = ? WHERE user = ?")
         progUpdate = (progress, ctx.message.author.name)
 
         cursor.execute(query, progUpdate)
@@ -396,7 +396,7 @@ async def update(ctx, progress: str):
 @update.error
 async def updateErr(ctx, error):
     if isinstance(error, wrongChannel):
-        await ctx.send(error)
+        await ctx.send(error, delete_after=60)
 
 ## Progress check
 @client.command(name='progress')
@@ -439,7 +439,7 @@ async def progress(ctx):
 @progress.error
 async def progErr(ctx, error):
     if isinstance(error, wrongChannel):
-        await ctx.send(error)
+        await ctx.send(error, delete_after=60)
 
 ## Admin: Swap current book
 @client.command(name='swap')
@@ -501,9 +501,9 @@ async def swap(ctx):
 @swap.error
 async def swapErr(ctx, error):
     if isinstance(error, wrongChannel):
-        await ctx.send(error)
+        await ctx.send(error, delete_after=60)
     elif isinstance(error, notAdmin):
-        await ctx.send(error)
+        await ctx.send(error, delete_after=60)
 
 ## Admin: Add eBook link
 @client.command(name='ebook')
@@ -536,9 +536,9 @@ async def ebook(ctx, id: int, ebookUrl: str):
 @ebook.error
 async def ebookErr(ctx, error):
     if isinstance(error, wrongChannel):
-        await ctx.send(error)
+        await ctx.send(error, delete_after=60)
     elif isinstance(error, notAdmin):
-        await ctx.send(error)
+        await ctx.send(error, delete_after=60)
 
 ## Admin: Add Audiobook link
 @client.command(name='abook')
@@ -571,9 +571,9 @@ async def abook(ctx, id: int, abookUrl: str):
 @abook.error
 async def abookErr(ctx, error):
     if isinstance(error, wrongChannel):
-        await ctx.send(error)
+        await ctx.send(error, delete_after=60)
     elif isinstance(error, notAdmin):
-        await ctx.send(error)
+        await ctx.send(error, delete_after=60)
 
 # Starting Discord listener
 client.run(discordToken)
