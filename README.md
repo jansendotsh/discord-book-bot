@@ -34,9 +34,5 @@ ansible-playbook deploy.yml -K -i <host-address>, -e ansible_python_interpreter=
 
 ## Goals
 
-- (Optional) update thumbnails on search responses 
-	- would need to dump clear fields and re-write embed each time (kinda sucks)
-- Add progress/update system
-- Adding ebook/audiobook links 
-- sample/starter db
-- backup db script for cron/s3
+- db creation script
+- db backup cron script

@@ -498,7 +498,7 @@ async def ebook(ctx, id: int, abookUrl: str):
         color = discord.Color.red()
     )
     embed.set_author(
-        name="Audiobook Update",aB
+        name="Audiobook Update",
         icon_url=authorImg
     )
     embed.set_thumbnail(
