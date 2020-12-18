@@ -13,7 +13,7 @@ helpPrompt='''
     Shows the last book as part of the book club and allows downloading a spreadsheet with all prior books
 
 • `b!add`
-    Allows adding a book to the pool of potential books. Can be general search terms.
+    Allows adding a book to the pool of potential books after confirming via Goodreads, accepts general search terms
     _Example:_ `b!add Stephen King Cujo`
 
 • `b!update`
@@ -74,6 +74,7 @@ def adminCheck():
 # Commands
 ## Help 
 @client.command()
+@chanCheck()
 async def help(ctx):
     embed = discord.Embed(
         description = "This is a help page that includes available commands.\n",
@@ -94,8 +95,14 @@ async def help(ctx):
 
     await ctx.message.channel.send(content=None, embed=embed, delete_after=60)
 
+@help.error
+async def helpErr(ctx, error):
+    if isinstance(error, wrongChannel):
+        await ctx.send(error)
+
 ## Add
 @client.command(name='add')
+@chanCheck()
 async def add(ctx, *, term):
 
     emojis = [upvote, downvote]
@@ -189,9 +196,15 @@ async def add(ctx, *, term):
                 b += 1
                 await grSearch(b)
                 await msg.remove_reaction(downvote, ctx.message.author)
+
+@add.error
+async def addErr(ctx, error):
+    if isinstance(error, wrongChannel):
+        await ctx.send(error)
    
 ## Past books
 @client.command(name='last')
+@chanCheck()
 async def last(ctx):
     emojis = [upvote]
 
@@ -236,8 +249,14 @@ async def last(ctx):
                 await ctx.message.author.send(content="Here's that spreadsheet with all previously read and discussed books", file=file)
                 break
 
+@last.error
+async def lastErr(ctx, error):
+    if isinstance(error, wrongChannel):
+        await ctx.send(error)
+
 ## Next book
 @client.command(name='next')
+@chanCheck()
 async def next(ctx):
     emojis = [upvote]
 
@@ -287,8 +306,14 @@ async def next(ctx):
                 await ctx.message.author.send(content="Here's that spreadsheet with all books already added to our upcoming pool for reading and discussion:", file=file)
                 break
 
+@next.error
+async def nextErr(ctx, error):
+    if isinstance(error, wrongChannel):
+        await ctx.send(error)
+
 ## Current book
 @client.command(name='current')
+@chanCheck()
 async def current(ctx):
     query = ("SELECT * FROM current WHERE id = 1")
     cursor.execute(query)
@@ -312,8 +337,14 @@ async def current(ctx):
 
     msg = await ctx.message.channel.send(content=None, embed=embed, delete_after=60)
 
+@current.error
+async def currentErr(ctx, error):
+    if isinstance(error, wrongChannel):
+        await ctx.send(error)
+
 ## Progress update
 @client.command(name='update')
+@chanCheck()
 async def update(ctx, progress: str):
     cursor.execute("SELECT * FROM current WHERE id = 1")
     curBook = cursor.fetchall()
@@ -331,7 +362,7 @@ async def update(ctx, progress: str):
             progress = str(int((progress/pageCount)*100))
             embDesc = "Your progress for **{}** by **{}** has been recorded 📚\n\nEveryone's progress can be viewed with `b!progress`".format(curBook[0][1],curBook[0][2])
         else:
-            embDesc = "That's an invalid value. Please try again with a percentage under 100 (i.e. `75%`) or a valid page count (i.e. `320`)."
+            embDesc = "That's an invalid value. Please try again with a percentage under 100 (i.e. `75%`) or a valid page count. Page counts only work for the edition on Goodreads. If you're unsure, check the Goodreads link shared in `b!current`."
     except:
         embDesc = "An error occurred while updating your progress. Please try again with a percentage (i.e. `75%`)."
 
@@ -362,8 +393,14 @@ async def update(ctx, progress: str):
 
     msg = await ctx.message.channel.send(content=None, embed=embed, delete_after=60)
 
+@update.error
+async def updateErr(ctx, error):
+    if isinstance(error, wrongChannel):
+        await ctx.send(error)
+
 ## Progress check
 @client.command(name='progress')
+@chanCheck()
 async def progress(ctx):
     cursor.execute("SELECT * FROM current WHERE id = 1")
     curBook = cursor.fetchall()
@@ -399,8 +436,15 @@ async def progress(ctx):
 
     msg = await ctx.message.channel.send(content=None, embed=embed, delete_after=120)
 
+@progress.error
+async def progErr(ctx, error):
+    if isinstance(error, wrongChannel):
+        await ctx.send(error)
+
 ## Admin: Swap current book
 @client.command(name='swap')
+@chanCheck()
+@adminCheck()
 async def swap(ctx):
     # Current >> Past
     cursor.execute("SELECT * FROM current WHERE id = 1")
@@ -454,9 +498,17 @@ async def swap(ctx):
 
     msg = await ctx.message.channel.send(content=None, embed=embed)
 
+@swap.error
+async def swapErr(ctx, error):
+    if isinstance(error, wrongChannel):
+        await ctx.send(error)
+    elif isinstance(error, notAdmin):
+        await ctx.send(error)
 
 ## Admin: Add eBook link
 @client.command(name='ebook')
+@chanCheck()
+@adminCheck()
 async def ebook(ctx, id: int, ebookUrl: str):
     query = ("UPDATE pool SET ebook_link = ? WHERE id = ?")
     ebookUpd = (ebookUrl, id)
@@ -481,9 +533,18 @@ async def ebook(ctx, id: int, ebookUrl: str):
     
     msg = await ctx.message.channel.send(content=None, embed=embed)
              
+@ebook.error
+async def ebookErr(ctx, error):
+    if isinstance(error, wrongChannel):
+        await ctx.send(error)
+    elif isinstance(error, notAdmin):
+        await ctx.send(error)
+
 ## Admin: Add Audiobook link
 @client.command(name='abook')
-async def ebook(ctx, id: int, abookUrl: str):
+@chanCheck()
+@adminCheck()
+async def abook(ctx, id: int, abookUrl: str):
     query = ("UPDATE pool SET abook_link = ? WHERE id = ?")
     abookUpd = (abookUrl, id)
     cursor.execute(query, abookUpd)
@@ -506,6 +567,13 @@ async def ebook(ctx, id: int, abookUrl: str):
     )
     
     msg = await ctx.message.channel.send(content=None, embed=embed)
+
+@abook.error
+async def abookErr(ctx, error):
+    if isinstance(error, wrongChannel):
+        await ctx.send(error)
+    elif isinstance(error, notAdmin):
+        await ctx.send(error)
 
 # Starting Discord listener
 client.run(discordToken)
