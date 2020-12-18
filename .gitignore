@@ -5,4 +5,4 @@ bin/*
 pyvenv.cfg
 key.json
 db/*
-docker-compose.yml
+docker-compose.yml*.csv

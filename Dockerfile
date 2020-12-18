@@ -3,4 +3,5 @@ WORKDIR /usr/src/app
 COPY requirements.txt ./
 COPY book-bot.py ./
 RUN pip install --no-cache-dir -r requirements.txt
+RUN mkdir -p db/
 CMD [ "python", "./book-bot.py" ]
