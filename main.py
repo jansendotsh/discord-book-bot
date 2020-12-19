@@ -57,7 +57,7 @@ cursor = connection.cursor()
 
 # Discord env
 #discordToken = DISCORD_TOKEN
-client = commands.Bot(command_prefix = 'beta!')
+client = commands.Bot(command_prefix = 'b!')
 client.remove_command('help')
 
 upvote = '👍'
