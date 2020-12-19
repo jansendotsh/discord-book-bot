@@ -1,0 +1,7 @@
+version: "3.8"
+services:
+  bot:
+    build: .
+    volumes:
+      - ./db:/usr/src/app/db:Z
+      - ./config.py:/usr/src/app/config.py:Z

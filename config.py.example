@@ -1,0 +1,12 @@
+# Goodreads Key/Secret
+GOODREADS_KEY = ""
+GOODREADS_SECRET = ""
+
+# Discord env
+DISCORD_TOKEN = ""
+## A dictionary container Discord user IDs of all users approved to use the admin tools (`b!adminHelp`)
+adminList = []
+## The Discord channel ID for the book club to prevent crossposting
+bookChan = 
+## The ID of the role for readers
+readerRole = 

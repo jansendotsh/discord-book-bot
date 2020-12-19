@@ -1,4 +1,5 @@
 import os, discord, sqlite3, time, csv, asyncio, random
+from config import GOODREADS_KEY,GOODREADS_SECRET,discordToken,adminList,bookChan,readerRole
 from discord.ext import commands
 from goodreads import client as gcclient
 
@@ -55,19 +56,17 @@ connection = sqlite3.connect(db_path)
 cursor = connection.cursor()
 
 # Discord env
-discordToken = os.getenv('DISCORD_TOKEN')
+#discordToken = DISCORD_TOKEN
 client = commands.Bot(command_prefix = 'beta!')
 client.remove_command('help')
-adminList = [176108473958924289]
-bookChan = 764982805427912705
-readerRole = 773619465811263538
+
 upvote = '👍'
 downvote = '👎'
 authorImg = "https://s.jnsn.link/book/book.png"
 thumbnailImg = "https://s.jnsn.link/book/bookmark.png"
 
 # Goodreads API
-gc = gcclient.GoodreadsClient(os.getenv('GOODREADS_KEY'), os.getenv('GOODREADS_SECRET'))
+gc = gcclient.GoodreadsClient(GOODREADS_KEY, GOODREADS_SECRET)
 
 # Starting log
 @client.event

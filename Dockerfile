@@ -1,7 +1,7 @@
 FROM python:3.8.6
 WORKDIR /usr/src/app
 COPY requirements.txt ./
-COPY book-bot.py ./
+COPY main.py ./
 RUN pip install --no-cache-dir -r requirements.txt
 RUN mkdir -p db/
-CMD [ "python", "./book-bot.py" ]
+CMD [ "python", "./main.py" ]
