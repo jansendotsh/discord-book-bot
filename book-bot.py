@@ -16,12 +16,36 @@ helpPrompt='''
     Allows adding a book to the pool of potential books after confirming via Goodreads, accepts general search terms
     _Example:_ `b!add Stephen King Cujo`
 
+• `b!addById`
+    For cases when Goodreads defaults to an incorrect edition or you have a particular book ID that you want to us, this is the quickest search
+    _Example:_ `b!addById 52764193`
+
 • `b!update`
     Updates your progress so we can track when we're all done with the book, requires either page count or percentage as argument
     _Example:_ `b!update 42%` or `b!update 220`
 
 • `b!progress`
     Shows the progress shared by readers of the current book
+'''
+
+adminHelpPrompt='''
+• `b!swap`
+    This rotates the current book and chooses a new next book from the pool, generally good to be sure that all links are set in the pool prior to running
+
+• `b!poolClean`
+    A command for managing the books in your pool. Accepts a command (rm, pages, ebook, abook), an ID (found via `b!next` and downloading CSV), and a argument:
+
+    `b!poolClean rm <id>`
+    Removed the book from the pool based on the ID passed
+
+    `b!poolClean pages <id> <pageCount>`
+    Updates the page count, ideal when Goodreads doesn't have one or the edition used varies
+
+    `b!poolClean ebook <id> <ebookUrl>`
+    Updates the eBook URL for this book
+
+    `b!poolClean abook <id> <audiobookUrl>`
+    Updates the audiobook URL for this book
 '''
 
 # sqlite3 data source
@@ -100,11 +124,38 @@ async def helpErr(ctx, error):
     if isinstance(error, wrongChannel):
         await ctx.send(error, delete_after=60)
 
+## Help 
+@client.command(name='adminHelp')
+@chanCheck()
+async def adminHelp(ctx):
+    embed = discord.Embed(
+        description = "This is a help page that includes available commands for admins.\n",
+        color = discord.Color.red()
+    )
+    embed.set_author(
+        name="Help & Commands",
+        icon_url=authorImg
+
+    )
+    embed.set_thumbnail(
+        url=thumbnailImg
+    )
+    embed.add_field(
+        name="**Commands:**",
+        value=adminHelpPrompt
+        )
+
+    await ctx.message.channel.send(content=None, embed=embed, delete_after=60)
+
+@adminHelp.error
+async def adminHelpErr(ctx, error):
+    if isinstance(error, wrongChannel):
+        await ctx.send(error, delete_after=60)
+
 ## Add
 @client.command(name='add')
 @chanCheck()
 async def add(ctx, *, term):
-
     emojis = [upvote, downvote]
 
     embed = discord.Embed(
@@ -202,6 +253,103 @@ async def addErr(ctx, error):
     if isinstance(error, wrongChannel):
         await ctx.send(error, delete_after=60)
    
+## Add By Goodreads ID
+@client.command(name='addById')
+@chanCheck()
+async def addById(ctx, id: int):
+    emojis = [upvote, downvote]
+
+    embed = discord.Embed(
+        description = "   ",
+        color = discord.Color.red()
+    )
+    embed.set_author(
+        name="Beta search via Goodreads API",
+        icon_url=authorImg
+    )
+    embed.set_thumbnail(
+        url=thumbnailImg
+    )
+    embed.add_field(
+        name="Search results:",
+        value="*Currently requesting the book from Goodreads with the following ID, \"{}\". The search can take a moment.*".format(id)
+    )
+    msg = await ctx.message.channel.send(content=None, embed=embed, delete_after=60)
+
+    try:
+        bookShow = gc.book(id)
+        
+        title = bookShow._book_dict['title']
+        grid = bookShow._book_dict['id']
+        pageCount = bookShow._book_dict['num_pages']
+        author = ""
+
+        if isinstance(bookShow._book_dict['authors']['author'], list):
+            for i in bookShow._book_dict['authors']['author']:
+                if i['role'] == None:
+                    author += "{}, ".format(i['name'])
+                if i['role'] != None:
+                    author += "{} ({}), ".format(i['name'], i['role'])
+
+            author = author[:-2]
+
+        elif isinstance(bookShow._book_dict['authors']['author'], dict):
+            author = bookShow._book_dict['authors']['author']['name']
+
+        embed.clear_fields()
+        embed.add_field(
+            name="Search results:",
+            value="Here is the ID sent:\n{}\n\nHere is what we found:\n**Author:** {}\n**Title:** {}\n**Goodreads ID:** {}\n**Page count:** {}\n\n**[Goodreads](https://www.goodreads.com/book/show/{})** \n**[Indiebound](https://www.goodreads.com/book_link/follow/7?book_id={})** ".format(id, author, title, grid, pageCount, grid, grid)
+        )
+        embed.set_thumbnail(
+            url=bookShow._book_dict['small_image_url']
+        )
+        await msg.edit(embed=embed, delete_after=60)
+        await msg.add_reaction(upvote)
+        await msg.add_reaction(downvote)
+
+    except:
+        embed.clear_fields()
+        embed.add_field(
+            name="Search results:",
+            value="It doesn't look like that's a valid Goodreads ID.\n\n**Tip:** You can grab an ID by navigating to the book on [Goodreads](https://www.goodreads.com/) and grabbing the number immediately after the first forward slash (`/`)."
+        )
+        await msg.edit(embed=embed, delete_after=60)
+        await msg.clear_reactions()
+
+    while emojis:
+        res = await client.wait_for(event='reaction_add', check=lambda reaction, user: user == ctx.message.author)
+        if res:
+            reaction, user = res
+            emojis = [e for e in emojis if e != reaction]
+
+            if reaction.emoji == upvote:                    
+                query = ("INSERT INTO pool(title, author, goodreads_id, thumbnail, pages) VALUES (?, ?, ?, ?, ?)")
+                bookAdd = (bookShow._book_dict['title'], author, bookShow._book_dict['id'], bookShow._book_dict['small_image_url'], bookShow._book_dict['num_pages'])
+                cursor.execute(query, bookAdd)
+                connection.commit()
+
+                embed.clear_fields()
+                embed.add_field(
+                    name="Book added!",
+                    value="I've added **{}** by **{}** to our pool of books for selection. \n\nYou can see the next book and request a list of the full pool of books by running `b!next`.".format(bookShow._book_dict['title'], author)
+                )
+                await msg.edit(embed=embed, delete_after=60)
+                await msg.clear_reactions()
+                break
+            if reaction.emoji == downvote:                    
+                embed.clear_fields()
+                embed.add_field(
+                    name="Incorrect ID",
+                    value="It looks like the ID that you've provided, {}, wasn't the book you wanted. You'll want to make sure that you have the right ID by navigating to the book on [Goodreads](https://goodreads.com) and pulling the number immediately after the base URL (i.e. `https://goodreads.com/<number-here>`)."
+                )
+                await msg.clear_reactions()
+
+@addById.error
+async def addByIdErr(ctx, error):
+    if isinstance(error, wrongChannel):
+        await ctx.send(error, delete_after=60)
+
 ## Past books
 @client.command(name='last')
 @chanCheck()
@@ -256,7 +404,7 @@ async def lastErr(ctx, error):
 
 ## Next book
 @client.command(name='next')
-@chanCheck()
+#@chanCheck()
 async def next(ctx):
     emojis = [upvote]
 
@@ -505,74 +653,108 @@ async def swapErr(ctx, error):
     elif isinstance(error, notAdmin):
         await ctx.send(error, delete_after=60)
 
-## Admin: Add eBook link
-@client.command(name='ebook')
-@chanCheck()
+## Admin: Pool clean
+@client.command(name='poolClean')
 @adminCheck()
-async def ebook(ctx, id: int, ebookUrl: str):
-    query = ("UPDATE pool SET ebook_link = ? WHERE id = ?")
-    ebookUpd = (ebookUrl, id)
-    cursor.execute(query, ebookUpd)
-    connection.commit()
+async def poolClean(ctx, cmd: str, id: int, editArg=None):
+    # rm: Removing from pool
+    if cmd == "rm":
+        query = ("SELECT * FROM pool WHERE id = ?")
+        cursor.execute(query, (id, ))
+        updBook = cursor.fetchone()
 
-    query = ("SELECT * FROM pool WHERE id = ?")
-    cursor.execute(query, (id, ))
-    updBook = cursor.fetchone()
+        query = ("DELETE FROM pool WHERE id = ?")
+        cursor.execute(query, (id, ))
+        connection.commit()
 
-    embed = discord.Embed(
-        description = "You've successfully updated the eBook link for **{}** by **{}**".format(updBook[1], updBook[2]),
-        color = discord.Color.red()
-    )
-    embed.set_author(
-        name="eBook Update",
-        icon_url=authorImg
-    )
-    embed.set_thumbnail(
-        url=updBook[4]
-    )
-    
-    msg = await ctx.message.channel.send(content=None, embed=embed)
-             
-@ebook.error
-async def ebookErr(ctx, error):
-    if isinstance(error, wrongChannel):
-        await ctx.send(error, delete_after=60)
-    elif isinstance(error, notAdmin):
-        await ctx.send(error, delete_after=60)
+        embed = discord.Embed(
+            description = "You've successfully removed **{}** by **{}** from the pool".format(updBook[1], updBook[2]),
+            color = discord.Color.red()
+        )
+        embed.set_author(
+            name="Book Removal",
+            icon_url=authorImg
+        )
+        embed.set_thumbnail(
+            url=updBook[4]
+        )
+        
+        msg = await ctx.message.channel.send(content=None, embed=embed)
+    # pages: Updating page count
+    if cmd == "pages":
+        query = ("UPDATE pool SET pages = ? WHERE id = ?")
+        pagesUpd = (editArg, id)
+        cursor.execute(query, pagesUpd)
+        connection.commit()
 
-## Admin: Add Audiobook link
-@client.command(name='abook')
-@chanCheck()
-@adminCheck()
-async def abook(ctx, id: int, abookUrl: str):
-    query = ("UPDATE pool SET abook_link = ? WHERE id = ?")
-    abookUpd = (abookUrl, id)
-    cursor.execute(query, abookUpd)
-    connection.commit()
+        query = ("SELECT * FROM pool WHERE id = ?")
+        cursor.execute(query, (id, ))
+        updBook = cursor.fetchone()
 
-    query = ("SELECT * FROM pool WHERE id = ?")
-    cursor.execute(query, (id, ))
-    updBook = cursor.fetchone()
+        embed = discord.Embed(
+            description = "You've successfully updated the page count for **{}** by **{}**".format(updBook[1], updBook[2]),
+            color = discord.Color.red()
+        )
+        embed.set_author(
+            name="Page Count Update",
+            icon_url=authorImg
+        )
+        embed.set_thumbnail(
+            url=updBook[4]
+        )
 
-    embed = discord.Embed(
-        description = "You've successfully updated the audiobook link for **{}** by **{}**".format(updBook[1], updBook[2]),
-        color = discord.Color.red()
-    )
-    embed.set_author(
-        name="Audiobook Update",
-        icon_url=authorImg
-    )
-    embed.set_thumbnail(
-        url=updBook[4]
-    )
-    
-    msg = await ctx.message.channel.send(content=None, embed=embed)
+        msg = await ctx.message.channel.send(content=None, embed=embed)
+    # ebook: Updating ebook
+    if cmd == "ebook":
+        query = ("UPDATE pool SET ebook_link = ? WHERE id = ?")
+        ebookUpd = (editArg, id)
+        cursor.execute(query, ebookUpd)
+        connection.commit()
 
-@abook.error
-async def abookErr(ctx, error):
-    if isinstance(error, wrongChannel):
-        await ctx.send(error, delete_after=60)
-    elif isinstance(error, notAdmin):
+        query = ("SELECT * FROM pool WHERE id = ?")
+        cursor.execute(query, (id, ))
+        updBook = cursor.fetchone()
+
+        embed = discord.Embed(
+            description = "You've successfully updated the eBook link for **{}** by **{}**".format(updBook[1], updBook[2]),
+            color = discord.Color.red()
+        )
+        embed.set_author(
+            name="eBook Update",
+            icon_url=authorImg
+        )
+        embed.set_thumbnail(
+            url=updBook[4]
+        )
+        
+        msg = await ctx.message.channel.send(content=None, embed=embed)
+    # abook: Updating abook
+    if cmd == "abook":
+        query = ("UPDATE pool SET abook_link = ? WHERE id = ?")
+        abookUpd = (editArg, id)
+        cursor.execute(query, abookUpd)
+        connection.commit()
+
+        query = ("SELECT * FROM pool WHERE id = ?")
+        cursor.execute(query, (id, ))
+        updBook = cursor.fetchone()
+
+        embed = discord.Embed(
+            description = "You've successfully updated the audiobook link for **{}** by **{}**".format(updBook[1], updBook[2]),
+            color = discord.Color.red()
+        )
+        embed.set_author(
+            name="Audiobook Update",
+            icon_url=authorImg
+        )
+        embed.set_thumbnail(
+            url=updBook[4]
+        )
+        
+        msg = await ctx.message.channel.send(content=None, embed=embed)
+
+async def poolCleanErr(ctx, error):
+    if isinstance(error, notAdmin):
         await ctx.send(error, delete_after=60)
 
 # Starting Discord listener
