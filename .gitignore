@@ -7,3 +7,5 @@ key.json
 db/*
 *.csv
 __pycache__/*
+config.py
+*.bak
